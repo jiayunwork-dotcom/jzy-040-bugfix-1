@@ -1,0 +1,12 @@
+# One-command build + run of the single-process service.
+#   docker compose up --build
+services:
+  poiseuille:
+    build: .
+    image: poiseuille-service:latest
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+    restart: unless-stopped
