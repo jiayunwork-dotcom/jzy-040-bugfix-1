@@ -138,4 +138,56 @@ describe('InverseService (pressure-drop inversion)', () => {
     expect(back.flowRate).toBeCloseTo(qAtLimit * 0.9, 12);
     expect(back.reynoldsNumber).toBeLessThan(2300);
   });
+
+  it('rejects a critical-band target the 1/4-area velocity bug used to pass', () => {
+    // Wide pipe, water-like viscosity, large target flow: hand-estimated
+    // Re ≈ 2500, genuinely above the laminar limit, yet below 4×2300, so a
+    // mean velocity four times too small reported a sub-critical Re and
+    // waved the target through.
+    const critical = {
+      radius: 0.01,
+      length: 1,
+      viscosity: 0.001,
+      density: 1000,
+      targetFlowRate: 3.927e-5,
+    };
+    // Sanity check on the arithmetic estimate behind the report.
+    const v = critical.targetFlowRate / (Math.PI * critical.radius ** 2);
+    const re = (v * 2 * critical.radius * critical.density) /
+      critical.viscosity;
+    expect(re).toBeGreaterThan(2300);
+    expect(re).toBeLessThan(4 * 2300);
+
+    expect(() => inverse.solve(critical)).toThrow(FlowException);
+    try {
+      inverse.solve(critical);
+      fail('expected not_laminar');
+    } catch (e) {
+      expect((e as FlowException).code).toBe(ErrorCode.NOT_LAMINAR);
+    }
+  });
+
+  it('reports velocities/Re in the critical band identically to forward', () => {
+    // Just under the limit: the two paths must agree on the auxiliary values
+    // precisely where they used to diverge by a factor of four.
+    const nearLimit = {
+      radius: 0.01,
+      length: 1,
+      viscosity: 0.001,
+      density: 1000,
+      targetFlowRate: 3.5e-5,
+    };
+    const solved = inverse.solve(nearLimit);
+    const back = forward.evaluate({
+      radius: nearLimit.radius,
+      length: nearLimit.length,
+      viscosity: nearLimit.viscosity,
+      density: nearLimit.density,
+      pressureDrop: solved.pressureDrop,
+    });
+    expect(solved.meanVelocity).toBeCloseTo(back.meanVelocity, 14);
+    expect(solved.maxVelocity).toBeCloseTo(back.maxVelocity, 14);
+    expect(solved.reynoldsNumber).toBeCloseTo(back.reynoldsNumber, 12);
+    expect(solved.reynoldsNumber).toBeLessThan(2300);
+  });
 });
