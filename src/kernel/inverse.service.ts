@@ -61,9 +61,8 @@ export class InverseService {
       targetFlowRate,
     );
 
-    // v̄ = Q / (π R²); gate on Re before returning a pressure drop.
-    const diameter = 2 * radius;
-    const meanVelocity = targetFlowRate / (Math.PI * diameter ** 2);
+    // v̄ = Q / A = Q / (π R²); gate on Re before returning a pressure drop.
+    const meanVelocity = targetFlowRate / (Math.PI * radius ** 2);
     const maxVelocity = 2 * meanVelocity;
     const reynoldsNumber = this.reynolds.compute(
       meanVelocity,

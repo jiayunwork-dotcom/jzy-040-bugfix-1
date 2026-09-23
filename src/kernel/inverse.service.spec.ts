@@ -60,6 +60,44 @@ describe('InverseService (pressure-drop inversion)', () => {
     expect(solved.wallShearStress).toBeCloseTo(back.wallShearStress, 14);
   });
 
+  it('computes velocity from cross-sectional area πR², not πD²', () => {
+    // This target is close to the laminar limit. Using D² as the area would
+    // under-report v and Re by 4x and make the gate dangerously permissive.
+    const geometry = {
+      radius: 0.01,
+      length: 1,
+      viscosity: 0.001,
+      density: 1000,
+    };
+    const targetFlowRate = 2000 * 0.001 * Math.PI * 0.01 / (2 * 1000);
+    const result = inverse.solve({ ...geometry, targetFlowRate });
+
+    expect(result.meanVelocity).toBeCloseTo(0.1, 14);
+    expect(result.maxVelocity).toBeCloseTo(0.2, 14);
+    expect(result.reynoldsNumber).toBeCloseTo(2000, 10);
+  });
+
+  it('rejects a target just above the true Re threshold despite the 4x area trap', () => {
+    const geometry = {
+      radius: 0.01,
+      length: 1,
+      viscosity: 0.001,
+      density: 1000,
+    };
+    const targetFlowRate = 2400 * 0.001 * Math.PI * 0.01 / (2 * 1000);
+
+    try {
+      inverse.solve({ ...geometry, targetFlowRate });
+      fail('expected not_laminar');
+    } catch (e) {
+      expect(e).toBeInstanceOf(FlowException);
+      expect((e as FlowException).code).toBe(ErrorCode.NOT_LAMINAR);
+      expect(
+        (e as FlowException).details?.reynoldsNumber as number,
+      ).toBeGreaterThanOrEqual(2300);
+    }
+  });
+
   it('rejects non-positive target flow', () => {
     for (const q of [0, -1e-9, NaN]) {
       try {

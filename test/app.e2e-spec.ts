@@ -161,6 +161,10 @@ describe('Poiseuille HTTP API (e2e)', () => {
         .expect(200);
       expect(fwd.body.flowRate).toBeCloseTo(target, 12);
       expect(Math.abs(fwd.body.flowRate - target) / target).toBeLessThan(1e-12);
+      expect(inv.body.meanVelocity).toBeCloseTo(fwd.body.meanVelocity, 12);
+      expect(inv.body.maxVelocity).toBeCloseTo(fwd.body.maxVelocity, 12);
+      expect(inv.body.reynoldsNumber).toBeCloseTo(fwd.body.reynoldsNumber, 10);
+      expect(inv.body.wallShearStress).toBeCloseTo(fwd.body.wallShearStress, 12);
     });
 
     it('rejects non-positive target flow', async () => {
